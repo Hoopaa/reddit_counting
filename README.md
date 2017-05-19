@@ -16,6 +16,6 @@ Pasquier Gérôme
 Pfeiffer Ludovic
 van Dooren Nicolas
 
-# Dataset 
+# Dataset
 
-https://github.com/umbrae/reddit-top-2.5-million
+https://www.reddit.com/r/datasets/comments/5z34a8/february_2017_reddit_comments_are_now_available/
