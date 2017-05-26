@@ -15,6 +15,8 @@ public class Submission {
 		}
 	}
 	
+	Submission(){}
+	
 	public void setJson(String json)
 	{
 		try {
