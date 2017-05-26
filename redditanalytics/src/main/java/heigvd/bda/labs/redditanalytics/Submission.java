@@ -15,7 +15,14 @@ public class Submission {
 		}
 	}
 	
-	Submission(){}
+	Submission()
+	{
+		try {
+			this.json = new JSONObject("{}");
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}	
+	}
 	
 	public void setJson(String json)
 	{
