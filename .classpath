@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="redditanalytics/src/main/java"/>
+	<classpathentry kind="lib" path="redditanalytics/target/redditanalytics-1.0-SNAPSHOT.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="output" path="redditanalytics/target/classes"/>
+</classpath>

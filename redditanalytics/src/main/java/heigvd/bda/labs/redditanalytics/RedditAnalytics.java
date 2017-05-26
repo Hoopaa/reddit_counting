@@ -11,6 +11,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapreduce.lib.input.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -36,10 +37,10 @@ import org.apache.hadoop.util.ToolRunner;
  */
 public class RedditAnalytics extends Configured implements Tool {
 
-	public final static IntWritable ONE = new IntWritable(1);
 
 	private int numReducers;
-	private Path inputPath;
+	private Path inputPath1;
+	private Path inputPath2;
 	private Path outputPath;
 
 	/**
@@ -48,29 +49,15 @@ public class RedditAnalytics extends Configured implements Tool {
 	 * @param args
 	 */
 	public RedditAnalytics(String[] args) {
-		if (args.length != 3) {
-			System.out.println("Usage: WordCount <num_reducers> <input_path> <output_path>");
+		if (args.length != 4) {
+			System.out.println("Usage: WordCount <num_reducers> <input_path> <input_path> <output_path>");
 			System.exit(0);
 		}
 		numReducers = Integer.parseInt(args[0]);
-		inputPath = new Path(args[1]);
-		outputPath = new Path(args[2]);
+		inputPath1 = new Path(args[1]);
+		inputPath2 = new Path(args[2]);
+		outputPath = new Path(args[3]);
 	}
-
-	/**
-	 * Utility to split a line of text in words.
-	 *
-	 * @param text what we want to split
-	 * @return words in text as an Array of String
-	 */
-	public static String[] words(String text) {
-	    StringTokenizer st = new StringTokenizer(text);
-	    ArrayList<String> result = new ArrayList<String>();
-	    while (st.hasMoreTokens())
-	    	result.add(st.nextToken());
-	    return Arrays.copyOf(result.toArray(),result.size(),String[].class);
-	}
-
 
 	/**
 	 * Simple Mapper class for WordCount
@@ -81,9 +68,9 @@ public class RedditAnalytics extends Configured implements Tool {
 	 * @author fatemeh.borran
 	 *
 	 */
-	static class PostJoinMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+	static class PostJoinMapper extends Mapper<Object, Text, Text, Text> {
 
-		private Text text;
+		private Text text, body;
 		private Submission submission;
 		/**
 		 * The setup before map.
@@ -93,6 +80,7 @@ public class RedditAnalytics extends Configured implements Tool {
 				InterruptedException {
 			super.setup(context);
 			text = new Text();
+			body = new Text();
 			submission = new Submission();
 		}
 
@@ -102,13 +90,14 @@ public class RedditAnalytics extends Configured implements Tool {
 		 *
 		 */
 		@Override
-		protected void map(LongWritable key, Text value, Context context)
+		protected void map(Object key, Text value, Context context)
 				throws IOException, InterruptedException {
 
 
 				submission.setJson(value.toString());
 				text.set(submission.getId());
-				context.write(text, RedditAnalytics.ONE);
+				body.set("A" + submission.getTitle());
+				context.write(text, body);
 
 		}
 
@@ -121,7 +110,51 @@ public class RedditAnalytics extends Configured implements Tool {
 
 			super.cleanup(context);
 		}
+	}
+	
+	
+	static class CommentJoinMapper extends Mapper<Object, Text, Text, Text> {
 
+		private Text text, body;
+		private Comment comment;
+		/**
+		 * The setup before map.
+		 */
+		@Override
+		protected void setup(Context context) throws IOException,
+				InterruptedException {
+			super.setup(context);
+			text = new Text();
+			body = new Text();
+			comment = new Comment();
+		}
+
+		/**
+		 * The map method reads an id as key and a text as value
+		 * and emits the pair (word,1) using Mapper.context.write()
+		 *
+		 */
+		@Override
+		protected void map(Object key, Text value, Context context)
+				throws IOException, InterruptedException {
+
+
+				comment.setJson(value.toString());
+				text.set(comment.getLinkId().split("_")[1]);
+				body.set("B" + comment.getBody());
+				context.write(text, body);
+
+		}
+
+		/**
+		 * The cleanup after map.
+		 */
+		@Override
+		protected void cleanup(Context context) throws IOException,
+				InterruptedException {
+
+			super.cleanup(context);
+		}
 	}
 
 	/**
@@ -133,9 +166,12 @@ public class RedditAnalytics extends Configured implements Tool {
 	 * @author fatemeh.borran
 	 *
 	 */
-	static class WCReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+	static class WCReducer extends Reducer<Text, Text, Text, Text> {
 
 		private IntWritable res = new IntWritable();
+		private ArrayList<Text> LstA;
+		private ArrayList<Text> LstB;
+		private Text tmp;
 
 		/**
 		 * The setup before reduce.
@@ -145,6 +181,10 @@ public class RedditAnalytics extends Configured implements Tool {
 				InterruptedException {
 			super.setup(context);
 			res = new IntWritable();
+			LstA = new ArrayList<>();
+			LstB = new ArrayList<>();
+			tmp = new Text();
+			
 		}
 
 		/**
@@ -152,16 +192,34 @@ public class RedditAnalytics extends Configured implements Tool {
 		 * and emits the pair (word,sum) using Reducer.context.write()
 		 */
 		@Override
-		protected void reduce(Text key, Iterable<IntWritable> values, Context context)
+		protected void reduce(Text key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException {
 
-			int sum = 0;
-
-			for (IntWritable value : values)
-				sum += value.get();
-
-			res.set(sum);
-			context.write(key, res);
+			LstA.clear();
+			LstB.clear();
+			
+		
+			for (Text value : values)
+			{
+				tmp.set(value);
+				if(tmp.charAt(0) == 'A')
+				{
+					LstA.add(new Text(tmp.toString().substring(1)));
+				}
+				else if(tmp.charAt(0) == 'B')
+				{
+					LstB.add(new Text(tmp.toString().substring(1)));
+				}
+			}
+			if (!LstA.isEmpty() && !LstB.isEmpty()) 
+			{
+				for (Text A : LstA) 
+				{
+					for (Text B : LstB) {
+						context.write(A, B);
+					}
+				}
+			}
 		}
 
 		/**
@@ -192,20 +250,23 @@ public class RedditAnalytics extends Configured implements Tool {
 		job.setInputFormatClass(TextInputFormat.class);
 
 		// Set map class and the map output key and value classes
-		job.setMapperClass(PostJoinMapper.class);
-		job.setMapOutputKeyClass(Text.class);
-		job.setMapOutputValueClass(IntWritable.class);
+		//job.setMapperClass(PostJoinMapper.class);
+		//job.setMapOutputKeyClass(Text.class);
+		//job.setMapOutputValueClass(Text.class);
+		MultipleInputs.addInputPath(job, inputPath1, TextInputFormat.class,CommentJoinMapper.class);
+		MultipleInputs.addInputPath(job, inputPath2, TextInputFormat.class,PostJoinMapper.class);
 
 		// Set reduce class and the reduce output key and value classes
 		job.setReducerClass(WCReducer.class);
 		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(IntWritable.class);
+		job.setOutputValueClass(Text.class);
 
 		// Set job output format to Text
 		job.setOutputFormatClass(TextOutputFormat.class);
 
 		// Add the input file as job input (from local or HDFS) to the variable inputPath
-		FileInputFormat.addInputPath(job, inputPath);
+		//FileInputFormat.addInputPath(job, inputPath);
+
 
 		// Set the output path for the job results (to local or HDFS) to the variable outputPath
 		FileOutputFormat.setOutputPath(job, outputPath);
