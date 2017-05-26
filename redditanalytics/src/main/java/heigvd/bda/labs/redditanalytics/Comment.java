@@ -15,6 +15,8 @@ public class Comment {
 		}
 	}
 	
+	Comment(){}
+	
 	public void setJson(String json)
 	{
 		try {
