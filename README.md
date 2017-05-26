@@ -12,10 +12,15 @@ This project is realised for the BDA class for the HES-SO MSE.
 # Contributors 
 
 Magnin Antoine
+
 Pasquier Gérôme 
+
 Pfeiffer Ludovic
+
 van Dooren Nicolas
+
 
 # Dataset
 
-https://www.reddit.com/r/datasets/comments/5z34a8/february_2017_reddit_comments_are_now_available/
+http://files.pushshift.io/reddit/submissions/ (February 2017)
+http://files.pushshift.io/reddit/comments/ (February 2017)
