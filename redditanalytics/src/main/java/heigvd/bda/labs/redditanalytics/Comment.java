@@ -1,11 +1,11 @@
-package test;
+package  heigvd.bda.labs.redditanalytics;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class Comment {
 	private JSONObject json;
-	
+
 	Comment(String json)
 	{
 		try {
@@ -14,7 +14,7 @@ public class Comment {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public String getBody()
 	{
 		try {
@@ -24,7 +24,7 @@ public class Comment {
 			return null;
 		}
 	}
-	
+
 	public String getLinkId()
 	{
 		try {
@@ -34,7 +34,7 @@ public class Comment {
 			return null;
 		}
 	}
-	
+
 	public String getId()
 	{
 		try {
@@ -44,7 +44,7 @@ public class Comment {
 			return null;
 		}
 	}
-	
+
 	public String getParentId()
 	{
 		try {
@@ -54,5 +54,5 @@ public class Comment {
 			return null;
 		}
 	}
-	
+
 }

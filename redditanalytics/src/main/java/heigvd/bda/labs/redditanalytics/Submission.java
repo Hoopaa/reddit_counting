@@ -1,11 +1,11 @@
-package test;
+package  heigvd.bda.labs.redditanalytics;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class Submission {
 	private JSONObject json;
-	
+
 	Submission(String json)
 	{
 		try {
@@ -14,7 +14,7 @@ public class Submission {
 			e.printStackTrace();
 		}
 	}
-	
+
 	public String getId()
 	{
 		try {
@@ -24,7 +24,7 @@ public class Submission {
 			return null;
 		}
 	}
-	
+
 	public String getTitle()
 	{
 		try {
@@ -34,7 +34,7 @@ public class Submission {
 			return null;
 		}
 	}
-	
+
 	public String getSubredditId()
 	{
 		try {
@@ -44,7 +44,7 @@ public class Submission {
 			return null;
 		}
 	}
-	
+
 	public String getScore()
 	{
 		try {
@@ -54,5 +54,5 @@ public class Submission {
 			return null;
 		}
 	}
-	
+
 }

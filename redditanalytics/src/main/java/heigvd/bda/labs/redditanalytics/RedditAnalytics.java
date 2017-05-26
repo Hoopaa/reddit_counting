@@ -81,9 +81,10 @@ public class RedditAnalytics extends Configured implements Tool {
 	 * @author fatemeh.borran
 	 *
 	 */
-	static class WCMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+	static class PostJoinMapper extends Mapper<LongWritable, Text, Text, Text> {
 
 		private Text text;
+		private Submission submission;
 		/**
 		 * The setup before map.
 		 */
@@ -92,6 +93,7 @@ public class RedditAnalytics extends Configured implements Tool {
 				InterruptedException {
 			super.setup(context);
 			text = new Text();
+			submission = new Submission();
 		}
 
 		/**
@@ -102,6 +104,7 @@ public class RedditAnalytics extends Configured implements Tool {
 		@Override
 		protected void map(LongWritable key, Text value, Context context)
 				throws IOException, InterruptedException {
+
 			for(String word : RedditAnalytics.words(value.toString())) {
 				text.set(word);
 				context.write(text, RedditAnalytics.ONE);
@@ -188,9 +191,9 @@ public class RedditAnalytics extends Configured implements Tool {
 		job.setInputFormatClass(TextInputFormat.class);
 
 		// Set map class and the map output key and value classes
-		job.setMapperClass(WCMapper.class);
+		job.setMapperClass(PostJoinMapper.class);
 		job.setMapOutputKeyClass(Text.class);
-		job.setMapOutputValueClass(IntWritable.class);
+		job.setMapOutputValueClass(Text.class);
 
 		// Set reduce class and the reduce output key and value classes
 		job.setReducerClass(WCReducer.class);
