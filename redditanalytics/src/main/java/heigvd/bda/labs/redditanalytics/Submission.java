@@ -15,6 +15,15 @@ public class Submission {
 		}
 	}
 	
+	public void setJson(String json)
+	{
+		try {
+			this.json = new JSONObject(json);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	public String getId()
 	{
 		try {
