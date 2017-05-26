@@ -14,7 +14,29 @@ public class Submission {
 			e.printStackTrace();
 		}
 	}
+<<<<<<< HEAD
 
+=======
+	
+	Submission()
+	{
+		try {
+			this.json = new JSONObject("{}");
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}	
+	}
+	
+	public void setJson(String json)
+	{
+		try {
+			this.json = new JSONObject(json);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+	}
+	
+>>>>>>> e17a633ba18937c5bfc3320a8e300575f1590445
 	public String getId()
 	{
 		try {
