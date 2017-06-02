@@ -66,11 +66,46 @@ public class Submission {
 	public String getScore()
 	{
 		try {
-			return (String) json.get("score");
+			return json.get("score").toString();
 		} catch (JSONException e) {
 			e.printStackTrace();
 			return null;
 		}
+	}
+	
+	public String getNumComments()
+	{
+		try {
+			return json.get("num_comments").toString();
+		} catch (JSONException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	public String getBody()
+	{
+		try {
+			return (String) json.get("body");
+		} catch (JSONException e) {
+			e.printStackTrace();
+			return "";
+		}
+	}
+	
+	
+	public String getComment(){
+		try {
+			return json.get("comment").toString();
+		} catch (JSONException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+	
+	public String getAll()
+	{
+		return json.toString();
 	}
 
 }

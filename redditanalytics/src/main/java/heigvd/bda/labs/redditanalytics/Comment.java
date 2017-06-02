@@ -2,6 +2,7 @@ package  heigvd.bda.labs.redditanalytics;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.mortbay.util.ajax.JSON;
 
 public class Comment {
 	private JSONObject json;
@@ -14,7 +15,7 @@ public class Comment {
 			e.printStackTrace();
 		}
 	}
-
+	
 	Comment()
 	{
 		try {
@@ -62,6 +63,16 @@ public class Comment {
 			return null;
 		}
 	}
+	
+	public String getScore()
+	{
+		try {
+			return json.get("score").toString();
+		} catch (JSONException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
 
 	public String getParentId()
 	{
@@ -71,6 +82,11 @@ public class Comment {
 			e.printStackTrace();
 			return null;
 		}
+	}
+	
+	public String getAll()
+	{
+		return json.toString();
 	}
 
 }

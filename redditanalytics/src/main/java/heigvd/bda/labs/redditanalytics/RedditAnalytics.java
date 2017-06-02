@@ -5,6 +5,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.StringTokenizer;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
@@ -42,6 +45,8 @@ public class RedditAnalytics extends Configured implements Tool {
 	private Path inputPath1;
 	private Path inputPath2;
 	private Path outputPath;
+	private Path tmpPath;
+	
 
 	/**
 	 * WordCount Constructor.
@@ -57,6 +62,7 @@ public class RedditAnalytics extends Configured implements Tool {
 		inputPath1 = new Path(args[1]);
 		inputPath2 = new Path(args[2]);
 		outputPath = new Path(args[3]);
+		tmpPath = new Path("tmp");
 	}
 
 	/**
@@ -96,7 +102,7 @@ public class RedditAnalytics extends Configured implements Tool {
 
 				submission.setJson(value.toString());
 				text.set(submission.getId());
-				body.set("A" + submission.getTitle());
+				body.set("A" + submission.getAll().replaceAll("\n", "\t"));
 				context.write(text, body);
 
 		}
@@ -141,7 +147,7 @@ public class RedditAnalytics extends Configured implements Tool {
 
 				comment.setJson(value.toString());
 				text.set(comment.getLinkId().split("_")[1]);
-				body.set("B" + comment.getBody());
+				body.set("B" + comment.getAll().replaceAll("\n", "\t"));
 				context.write(text, body);
 
 		}
@@ -172,6 +178,8 @@ public class RedditAnalytics extends Configured implements Tool {
 		private ArrayList<Text> LstA;
 		private ArrayList<Text> LstB;
 		private Text tmp;
+		private JSONObject jsonA, jsonB;
+		private Text emptyText;
 
 		/**
 		 * The setup before reduce.
@@ -183,7 +191,8 @@ public class RedditAnalytics extends Configured implements Tool {
 			res = new IntWritable();
 			LstA = new ArrayList<>();
 			LstB = new ArrayList<>();
-			tmp = new Text();
+			tmp = new Text();	
+			emptyText = new Text("");
 			
 		}
 
@@ -216,7 +225,19 @@ public class RedditAnalytics extends Configured implements Tool {
 				for (Text A : LstA) 
 				{
 					for (Text B : LstB) {
-						context.write(A, B);
+						
+						try {
+							jsonA = new JSONObject(A.toString());
+							jsonB = new JSONObject(B.toString());
+							jsonA.put("comment", jsonB);
+							
+							tmp.set(jsonA.toString());
+							context.write(tmp, emptyText);
+							
+						} catch (JSONException e) {
+							e.printStackTrace();
+						}
+
 					}
 				}
 			}
@@ -232,7 +253,93 @@ public class RedditAnalytics extends Configured implements Tool {
 			super.cleanup(context);
 		}
 	}
+	static class AnalyticsMapper extends Mapper<Object, Text, Text, Text> {
 
+		private Text post, comment;
+		private Analytic analytics;
+		private String compositeKey, compositeValue;
+		/**
+		 * The setup before map.
+		 */
+		@Override
+		protected void setup(Context context) throws IOException,
+				InterruptedException {
+			super.setup(context);
+			post = new Text();
+			comment = new Text();
+			analytics = new Analytic();
+		}
+
+		/**
+		 * The map method reads an id as key and a text as value
+		 * and emits the pair (word,1) using Mapper.context.write()
+		 *
+		 */
+		@Override
+		protected void map(Object key, Text value, Context context)
+				throws IOException, InterruptedException {
+				
+				
+				analytics.setJson(value.toString());
+				compositeKey = 'I'+analytics.getSubmission().getId() + '\n' + 'S' + analytics.getSubmission().getScore() + '\n' + 'N' + analytics.getSubmission().getNumComments() + '\n' + 'L' + analytics.getSubmission().getBody().length();
+				compositeValue = 'S' + analytics.getComment().getScore() + '\n' + 'L' + analytics.getComment().getBody().length();				
+				post.set(compositeKey);
+				comment.set(compositeValue);
+				context.write(post, comment);
+		}
+
+		/**
+		 * The cleanup after map.
+		 */
+		@Override
+		protected void cleanup(Context context) throws IOException,
+				InterruptedException {
+
+			super.cleanup(context);
+		}
+	}
+	
+	static class AnalyticsReducer extends Reducer<Text, Text, Text, Text> {
+
+		private IntWritable res = new IntWritable();
+		private Text tmp;
+
+		/**
+		 * The setup before reduce.
+		 */
+		@Override
+		protected void setup(Context context) throws IOException,
+				InterruptedException {
+			super.setup(context);
+			res = new IntWritable();
+			tmp = new Text();
+			
+		}
+
+		/**
+		 * The reduce method reads an id as key and an iterable collection of 1 as values
+		 * and emits the pair (word,sum) using Reducer.context.write()
+		 */
+		@Override
+		protected void reduce(Text key, Iterable<Text> values, Context context)
+				throws IOException, InterruptedException {
+			for (Text value : values){
+				System.out.println(key.toString() +"_____"+value.toString());
+				context.write(key,value);
+			}
+			
+		}
+
+		/**
+		 * The cleanup after reduce.
+		 */
+		@Override
+		protected void cleanup(Context context) throws IOException,
+				InterruptedException {
+
+			super.cleanup(context);
+		}
+	}
 	/**
 	 * The main method to define the job and run the job.
 	 */
@@ -241,7 +348,7 @@ public class RedditAnalytics extends Configured implements Tool {
 		Configuration conf = this.getConf();
 
 		// Create a new Job
-		Job job = new Job(conf,"Word Count Simple");
+		Job job = new Job(conf,"Join Reddit Analytics");
 
 		// Set job input format to Text:
 		// Files are broken into lines.
@@ -269,7 +376,7 @@ public class RedditAnalytics extends Configured implements Tool {
 
 
 		// Set the output path for the job results (to local or HDFS) to the variable outputPath
-		FileOutputFormat.setOutputPath(job, outputPath);
+		FileOutputFormat.setOutputPath(job, tmpPath);
 
 		// Set the number of reducers using variable numReducers
 		job.setNumReduceTasks(numReducers);
@@ -277,8 +384,51 @@ public class RedditAnalytics extends Configured implements Tool {
 		// Set the jar class
 		job.setJarByClass(RedditAnalytics.class);
 
+		
+		//ADDING BY LUDO AND NICO
+		
 		// Execute the job
-		return job.waitForCompletion(true) ? 0 : 1;
+		job.waitForCompletion(true);
+		
+		// Create a new Job
+		Job jobAnalytic = new Job(conf,"Reddit Analytics Stats");
+
+		// Set job input format to Text:
+		// Files are broken into lines.
+		// Either linefeed or carriage-return are used to signal end of line.
+		// Keys are the position in the file, and values are the line of text.
+		jobAnalytic.setInputFormatClass(TextInputFormat.class);
+
+		// Set map class and the map output key and value classes
+		jobAnalytic.setMapperClass(AnalyticsMapper.class);
+		jobAnalytic.setMapOutputKeyClass(Text.class);
+		jobAnalytic.setMapOutputValueClass(Text.class);
+
+		// Set reduce class and the reduce output key and value classes
+		jobAnalytic.setReducerClass(AnalyticsReducer.class);
+		jobAnalytic.setOutputKeyClass(Text.class);
+		jobAnalytic.setOutputValueClass(Text.class);
+
+		// Set job output format to Text
+		jobAnalytic.setOutputFormatClass(TextOutputFormat.class);
+
+		// Add the input file as job input (from local or HDFS) to the variable inputPath
+		FileInputFormat.addInputPath(jobAnalytic, tmpPath);
+
+
+		// Set the output path for the job results (to local or HDFS) to the variable outputPath
+		FileOutputFormat.setOutputPath(jobAnalytic, outputPath);
+
+		// Set the number of reducers using variable numReducers
+		jobAnalytic.setNumReduceTasks(numReducers);
+
+		// Set the jar class
+		jobAnalytic.setJarByClass(RedditAnalytics.class);
+
+		// Execute the job
+		int res = jobAnalytic.waitForCompletion(true) ? 0 : 1;
+		//FileSystem.delete(tmpPath, true);
+		return res;
 	}
 
 
