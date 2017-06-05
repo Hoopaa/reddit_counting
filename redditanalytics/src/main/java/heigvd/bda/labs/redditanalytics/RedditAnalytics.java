@@ -3,27 +3,25 @@ package heigvd.bda.labs.redditanalytics;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.StringTokenizer;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.lib.input.*;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
  * Word Count example of MapReduce job.
@@ -281,8 +279,8 @@ public class RedditAnalytics extends Configured implements Tool {
 				
 				
 				analytics.setJson(value.toString());
-				compositeKey = 'I'+analytics.getSubmission().getId() + '\n' + 'S' + analytics.getSubmission().getScore() + '\n' + 'N' + analytics.getSubmission().getNumComments() + '\n' + 'L' + analytics.getSubmission().getBody().length();
-				compositeValue = 'S' + analytics.getComment().getScore() + '\n' + 'L' + analytics.getComment().getBody().length();				
+				compositeKey = analytics.getSubmission().getId() + '\n' + analytics.getSubmission().getScore() + '\n' + analytics.getSubmission().getNumComments() + '\n' + analytics.getSubmission().getBody().length();
+				compositeValue = analytics.getComment().getScore() + '\n' + analytics.getComment().getBody().length();				
 				post.set(compositeKey);
 				comment.set(compositeValue);
 				context.write(post, comment);
@@ -301,8 +299,11 @@ public class RedditAnalytics extends Configured implements Tool {
 	
 	static class AnalyticsReducer extends Reducer<Text, Text, Text, Text> {
 
-		private IntWritable res = new IntWritable();
-		private Text tmp;
+		private DoubleWritable avgLengthComment = new DoubleWritable();
+		private DoubleWritable avgScore = new DoubleWritable();
+		private ArrayList<String> tabPost;
+		private ArrayList<String> tabComment;
+		private Text key, value;
 
 		/**
 		 * The setup before reduce.
@@ -311,8 +312,11 @@ public class RedditAnalytics extends Configured implements Tool {
 		protected void setup(Context context) throws IOException,
 				InterruptedException {
 			super.setup(context);
-			res = new IntWritable();
-			tmp = new Text();
+			tabPost = new ArrayList<>();
+			tabComment = new ArrayList<>();
+			key = new Text();
+			value = new Text();
+			
 			
 		}
 
@@ -321,12 +325,25 @@ public class RedditAnalytics extends Configured implements Tool {
 		 * and emits the pair (word,sum) using Reducer.context.write()
 		 */
 		@Override
-		protected void reduce(Text key, Iterable<Text> values, Context context)
+		protected void reduce(Text post, Iterable<Text> comments, Context context)
 				throws IOException, InterruptedException {
-			for (Text value : values){
-				System.out.println(key.toString() +"_____"+value.toString());
-				context.write(key,value);
+			tabPost.clear();
+			tabPost.addAll(Arrays.asList(post.toString().split("\n")));
+			avgLengthComment.set(0);
+			avgScore.set(0);;
+			for (Text comment : comments){
+				tabComment.clear();
+				tabComment.addAll(Arrays.asList(comment.toString().split("\n")));
+				
+				avgLengthComment.set(avgLengthComment.get() + Double.valueOf(tabComment.get(1)));
+				avgScore.set(avgScore.get() + Double.valueOf(tabComment.get(0)));
+				
 			}
+			avgLengthComment.set(avgLengthComment.get() / Double.valueOf(tabPost.get(2)));
+			
+			key.set(tabPost.get(0)); 
+			value.set(tabPost.get(1)+";"+tabPost.get(3)+";"+avgLengthComment.get()+";"+avgScore.get());
+			context.write(key, value);
 			
 		}
 

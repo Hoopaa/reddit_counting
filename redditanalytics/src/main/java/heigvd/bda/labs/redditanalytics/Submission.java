@@ -88,7 +88,6 @@ public class Submission {
 		try {
 			return (String) json.get("body");
 		} catch (JSONException e) {
-			e.printStackTrace();
 			return "";
 		}
 	}
