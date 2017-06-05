@@ -341,8 +341,7 @@ public class RedditAnalytics extends Configured implements Tool {
 			}
 			avgLengthComment.set(avgLengthComment.get() / Double.valueOf(tabPost.get(2)));
 			
-			key.set(tabPost.get(0)); 
-			value.set(tabPost.get(1)+";"+tabPost.get(3)+";"+avgLengthComment.get()+";"+avgScore.get());
+			key.set(tabPost.get(0)+";"+tabPost.get(1)+";"+tabPost.get(3)+";"+avgLengthComment.get()+";"+avgScore.get()+";"); 
 			context.write(key, value);
 			
 		}
