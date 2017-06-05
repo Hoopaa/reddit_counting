@@ -24,16 +24,14 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
- * Word Count example of MapReduce job.
+ * Reddit Analytics : 
+ * first step : join post and comment
+ * 
+ *  second step : extract some data of the full json and make some analytics like sum, avg ...
  *
- * Given a plain text as input on local or HDFS, this job counts how many occurrences of
- * each word in that text and writes the result on local or HDFS.
+ * usage: redditanalytics <num_reducers> <input_path_comments> <input_path_posts> <output_path>
  *
- * The input can be a single text file or a folder containing multiple text files.
- *
- * usage: WordCount <num_reducers> <input_path> <output_path>
- *
- * @author fatemeh.borran
+ * @author Magnin - Pasquier - Pfeiffer - van Dooren
  *
  */
 public class RedditAnalytics extends Configured implements Tool {
@@ -47,13 +45,13 @@ public class RedditAnalytics extends Configured implements Tool {
 	
 
 	/**
-	 * WordCount Constructor.
+	 * RedditAnalytics Constructor.
 	 *
 	 * @param args
 	 */
 	public RedditAnalytics(String[] args) {
 		if (args.length != 4) {
-			System.out.println("Usage: WordCount <num_reducers> <input_path> <input_path> <output_path>");
+			System.out.println("Usage: WordCount <num_reducers> <input_path_comments> <input_path_post> <output_path>");
 			System.exit(0);
 		}
 		numReducers = Integer.parseInt(args[0]);
@@ -64,14 +62,14 @@ public class RedditAnalytics extends Configured implements Tool {
 	}
 
 	/**
-	 * Simple Mapper class for WordCount
+	 * Simple Mapper class for PostJoin
 	 *
-	 * Input: (LongWritable id, Text line)
-	 * Output: (Text word, IntWritable 1)
+	 * Input: (Object id, Text line (json post))
+	 * Output: (Text post ID, Text "A" + (json post))
 	 *
-	 * @author fatemeh.borran
+	 * @author Magnin - Pasquier - Pfeiffer - van Dooren
 	 *
-	 */
+	 */ 
 	static class PostJoinMapper extends Mapper<Object, Text, Text, Text> {
 
 		private Text text, body;
@@ -82,6 +80,7 @@ public class RedditAnalytics extends Configured implements Tool {
 		@Override
 		protected void setup(Context context) throws IOException,
 				InterruptedException {
+			
 			super.setup(context);
 			text = new Text();
 			body = new Text();
@@ -89,20 +88,17 @@ public class RedditAnalytics extends Configured implements Tool {
 		}
 
 		/**
-		 * The map method reads an id as key and a text as value
-		 * and emits the pair (word,1) using Mapper.context.write()
-		 *
+		 *  le contenu du json du post est prefixe de "A" pour signifier qu'il s'agit d'un post
+		 *  la cle est l'ID du post
 		 */
 		@Override
 		protected void map(Object key, Text value, Context context)
 				throws IOException, InterruptedException {
 
-
 				submission.setJson(value.toString());
 				text.set(submission.getId());
 				body.set("A" + submission.getAll().replaceAll("\n", "\t"));
 				context.write(text, body);
-
 		}
 
 		/**
@@ -117,6 +113,15 @@ public class RedditAnalytics extends Configured implements Tool {
 	}
 	
 	
+	/**
+	 * Simple Mapper class for CommentJoin
+	 *
+	 * Input: (Object id, Text line (json comment))
+	 * Output: (Text post ID, Text "B" + (json comment))
+	 *
+	 * @author Magnin - Pasquier - Pfeiffer - van Dooren
+	 *
+	 */ 
 	static class CommentJoinMapper extends Mapper<Object, Text, Text, Text> {
 
 		private Text text, body;
@@ -127,6 +132,7 @@ public class RedditAnalytics extends Configured implements Tool {
 		@Override
 		protected void setup(Context context) throws IOException,
 				InterruptedException {
+			
 			super.setup(context);
 			text = new Text();
 			body = new Text();
@@ -134,20 +140,17 @@ public class RedditAnalytics extends Configured implements Tool {
 		}
 
 		/**
-		 * The map method reads an id as key and a text as value
-		 * and emits the pair (word,1) using Mapper.context.write()
-		 *
+		 *  le contenu du json du commentaire est prefixe de "B" pour signifier qu'il s'agit d'un commentaire
+		 *  la cle est l'ID du post du commentaire
 		 */
 		@Override
 		protected void map(Object key, Text value, Context context)
 				throws IOException, InterruptedException {
 
-
 				comment.setJson(value.toString());
 				text.set(comment.getLinkId().split("_")[1]);
 				body.set("B" + comment.getAll().replaceAll("\n", "\t"));
 				context.write(text, body);
-
 		}
 
 		/**
@@ -162,14 +165,14 @@ public class RedditAnalytics extends Configured implements Tool {
 	}
 
 	/**
-	 * Reducer class for WordCount sums results for a given word.
+	 * Simple Reducer class for Join between post and comment (by comment ID) 
 	 *
-	 * Input: (Text word, IntWritable 1)
-	 * Output: (Text word, IntWritable sum)
+	 * Input: (Text post id, Text (json comment) or (json post))
+	 * Output: (Text json contain post with comment, Text Empty)
 	 *
-	 * @author fatemeh.borran
+	 * @author Magnin - Pasquier - Pfeiffer - van Dooren
 	 *
-	 */
+	 */ 
 	static class WCReducer extends Reducer<Text, Text, Text, Text> {
 
 		private IntWritable res = new IntWritable();
@@ -185,6 +188,7 @@ public class RedditAnalytics extends Configured implements Tool {
 		@Override
 		protected void setup(Context context) throws IOException,
 				InterruptedException {
+			
 			super.setup(context);
 			res = new IntWritable();
 			LstA = new ArrayList<>();
@@ -195,8 +199,7 @@ public class RedditAnalytics extends Configured implements Tool {
 		}
 
 		/**
-		 * The reduce method reads an id as key and an iterable collection of 1 as values
-		 * and emits the pair (word,sum) using Reducer.context.write()
+		 * The reduce method join comment and post by post id
 		 */
 		@Override
 		protected void reduce(Text key, Iterable<Text> values, Context context)
@@ -251,6 +254,17 @@ public class RedditAnalytics extends Configured implements Tool {
 			super.cleanup(context);
 		}
 	}
+	
+	
+	/**
+	 * Simple Mapper class for extract some data from the json 
+	 *
+	 * Input: (Object id, Text (json post) and (json comment))
+	 * Output: (Text key composit contain some info of post, Text value composit contain some info of comment)
+	 *
+	 * @author Magnin - Pasquier - Pfeiffer - van Dooren
+	 *
+	 */ 
 	static class AnalyticsMapper extends Mapper<Object, Text, Text, Text> {
 
 		private Text post, comment;
@@ -269,14 +283,12 @@ public class RedditAnalytics extends Configured implements Tool {
 		}
 
 		/**
-		 * The map method reads an id as key and a text as value
-		 * and emits the pair (word,1) using Mapper.context.write()
-		 *
+		 * le mapper extrait certaine donnees du post et du commentaire 
+		 * la cle composite contient les infos relatives au post et la valeur 
 		 */
 		@Override
 		protected void map(Object key, Text value, Context context)
 				throws IOException, InterruptedException {
-				
 				
 				analytics.setJson(value.toString());
 				compositeKey = analytics.getSubmission().getId() + '\n' + analytics.getSubmission().getScore() + '\n' + analytics.getSubmission().getNumComments() + '\n' + analytics.getSubmission().getBody().length();
@@ -297,6 +309,16 @@ public class RedditAnalytics extends Configured implements Tool {
 		}
 	}
 	
+	
+	/**
+	 * Simple Reducer class for extract some data from the json 
+	 *
+	 * Input: (Text composit key of post, Text composit value of comment)
+	 * Output: (Text post id + some values for analytics, Text Empty)
+	 *
+	 * @author Magnin - Pasquier - Pfeiffer - van Dooren
+	 *
+	 */ 
 	static class AnalyticsReducer extends Reducer<Text, Text, Text, Text> {
 
 		private DoubleWritable avgLengthComment = new DoubleWritable();
@@ -321,8 +343,7 @@ public class RedditAnalytics extends Configured implements Tool {
 		}
 
 		/**
-		 * The reduce method reads an id as key and an iterable collection of 1 as values
-		 * and emits the pair (word,sum) using Reducer.context.write()
+		 * Le reducer effectue principalement des moyenes et ecrit en fichier de sortie les valeurs separee par des ";"
 		 */
 		@Override
 		protected void reduce(Text post, Iterable<Text> comments, Context context)
@@ -356,6 +377,7 @@ public class RedditAnalytics extends Configured implements Tool {
 			super.cleanup(context);
 		}
 	}
+	
 	/**
 	 * The main method to define the job and run the job.
 	 */
@@ -373,9 +395,6 @@ public class RedditAnalytics extends Configured implements Tool {
 		job.setInputFormatClass(TextInputFormat.class);
 
 		// Set map class and the map output key and value classes
-		//job.setMapperClass(PostJoinMapper.class);
-		//job.setMapOutputKeyClass(Text.class);
-		//job.setMapOutputValueClass(Text.class);
 		MultipleInputs.addInputPath(job, inputPath1, TextInputFormat.class,CommentJoinMapper.class);
 		MultipleInputs.addInputPath(job, inputPath2, TextInputFormat.class,PostJoinMapper.class);
 
@@ -387,10 +406,6 @@ public class RedditAnalytics extends Configured implements Tool {
 		// Set job output format to Text
 		job.setOutputFormatClass(TextOutputFormat.class);
 
-		// Add the input file as job input (from local or HDFS) to the variable inputPath
-		//FileInputFormat.addInputPath(job, inputPath);
-
-
 		// Set the output path for the job results (to local or HDFS) to the variable outputPath
 		FileOutputFormat.setOutputPath(job, tmpPath);
 
@@ -399,9 +414,6 @@ public class RedditAnalytics extends Configured implements Tool {
 
 		// Set the jar class
 		job.setJarByClass(RedditAnalytics.class);
-
-		
-		//ADDING BY LUDO AND NICO
 		
 		// Execute the job
 		job.waitForCompletion(true);
@@ -430,7 +442,6 @@ public class RedditAnalytics extends Configured implements Tool {
 
 		// Add the input file as job input (from local or HDFS) to the variable inputPath
 		FileInputFormat.addInputPath(jobAnalytic, tmpPath);
-
 
 		// Set the output path for the job results (to local or HDFS) to the variable outputPath
 		FileOutputFormat.setOutputPath(jobAnalytic, outputPath);
