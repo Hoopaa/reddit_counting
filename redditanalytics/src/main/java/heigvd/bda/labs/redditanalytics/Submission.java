@@ -86,7 +86,7 @@ public class Submission {
 	public String getBody()
 	{
 		try {
-			return (String) json.get("body");
+			return (String) json.get("selftext");
 		} catch (JSONException e) {
 			return "";
 		}

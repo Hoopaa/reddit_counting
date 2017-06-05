@@ -296,6 +296,10 @@ public class RedditAnalytics extends Configured implements Tool {
 				post.set(compositeKey);
 				comment.set(compositeValue);
 				context.write(post, comment);
+				
+				
+				System.out.println(analytics.getSubmission().getBody().length());
+				
 		}
 
 		/**
@@ -360,8 +364,16 @@ public class RedditAnalytics extends Configured implements Tool {
 				avgScore.set(avgScore.get() + Double.valueOf(tabComment.get(0)));
 				
 			}
-			avgLengthComment.set(avgLengthComment.get() / Double.valueOf(tabPost.get(2)));
-			
+			if(Integer.valueOf(tabPost.get(2))!=0)
+			{
+				avgLengthComment.set(avgLengthComment.get() / Double.valueOf(tabPost.get(2)));
+				avgScore.set(avgScore.get() / Double.valueOf(tabPost.get(2)));
+			}
+			else
+			{
+				avgLengthComment.set(0);
+				avgScore.set(0);
+			}
 			key.set(tabPost.get(0)+";"+tabPost.get(1)+";"+tabPost.get(3)+";"+avgLengthComment.get()+";"+avgScore.get()+";"); 
 			context.write(key, value);
 			
