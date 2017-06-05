@@ -1,8 +1,5 @@
 package  heigvd.bda.labs.redditanalytics;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 public class Analytic {
 	private Submission submission;
 	private Comment comment;
