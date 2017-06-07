@@ -62,6 +62,16 @@ public class Submission {
 			return null;
 		}
 	}
+	
+	public String getSubreddit()
+	{
+		try {
+			return (String) json.get("subreddit");
+		} catch (JSONException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
 
 	public String getScore()
 	{

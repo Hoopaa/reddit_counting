@@ -291,15 +291,11 @@ public class RedditAnalytics extends Configured implements Tool {
 				throws IOException, InterruptedException {
 				
 				analytics.setJson(value.toString());
-				compositeKey = analytics.getSubmission().getId() + '\n' + analytics.getSubmission().getScore() + '\n' + analytics.getSubmission().getNumComments() + '\n' + analytics.getSubmission().getBody().length();
+				compositeKey = analytics.getSubmission().getId() + '\n' + analytics.getSubmission().getScore() + '\n' + analytics.getSubmission().getNumComments() + '\n' + analytics.getSubmission().getBody().length()+ '\n' +analytics.getSubmission().getSubreddit();
 				compositeValue = analytics.getComment().getScore() + '\n' + analytics.getComment().getBody().length();				
 				post.set(compositeKey);
 				comment.set(compositeValue);
-				context.write(post, comment);
-				
-				
-				System.out.println(analytics.getSubmission().getBody().length());
-				
+				context.write(post, comment);			
 		}
 
 		/**
@@ -374,7 +370,7 @@ public class RedditAnalytics extends Configured implements Tool {
 				avgLengthComment.set(0);
 				avgScore.set(0);
 			}
-			key.set(tabPost.get(0)+";"+tabPost.get(1)+";"+tabPost.get(3)+";"+avgLengthComment.get()+";"+avgScore.get()+";"); 
+			key.set(tabPost.get(0)+";"+tabPost.get(2)+";"+tabPost.get(4)+";"+tabPost.get(1)+";"+tabPost.get(3)+";"+avgLengthComment.get()+";"+avgScore.get()+";"); 
 			context.write(key, value);
 			
 		}
